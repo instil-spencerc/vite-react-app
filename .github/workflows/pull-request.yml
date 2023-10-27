@@ -1,0 +1,113 @@
+name: PullRequest
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  LintAndUnitTests:
+    name: LintAndUnitTests
+    runs-on: ubuntu-latest
+    steps:
+      # Informational
+      - id: GithubContext
+        name: DumpGitHubcontext
+        env:
+          GITHUB_CONTEXT: ${{ toJSON(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      # checkout repo for the particular commit SHA
+      - id: CheckoutRepo
+        name: CheckoutRepo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - id: GetDiffFiles
+        name: GetDiffFiles
+        uses: technote-space/get-diff-action@v6
+        with:
+          PATTERNS: |
+            src/**/*.+(js|jsx|ts|tsx)
+            !src/styles/**/*.js
+            .storybook/**/*.+(js|jsx)
+          FILES: |
+            yarn.lock
+            .eslintrc.json
+
+      # Install node in the runner
+      - id: InstallNode
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        name: InstallNode
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "yarn"
+
+      # Install and cache node modules
+      - id: InstallNodeModules
+        name: InstallNodeModules
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        run: |
+          yarn install --immutable
+
+      # Lint source files with differences
+      - id: LintChangedFiles
+        name: LintChangedFiles
+        if: env.GIT_DIFF && !env.MATCHED_FILES
+        run: |
+          npx eslint ${{ env.GIT_DIFF_FILTERED }} --max-warnings 0 # e.g. yarn eslint 'src/App.js'
+
+      # Run a lint on all files if there are changes to yarn.lock or .eslintrc
+      - id: LintAllFiles
+        name: LintAllFiles
+        if: env.GIT_DIFF && env.MATCHED_FILES
+        run: |
+          yarn lint --max-warnings 0
+
+      # Run ALL tests
+      - id: RunAllTests
+        name: RunAllTests
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        run: |
+          yarn test --ci --silent --coverage --maxWorkers=50% | tee ./coverage.txt && exit ${PIPESTATUS[0]}
+
+      - id: CommentCoverage
+        name: CommentCoverage
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          coverage-path: ./coverage.txt
+          report-only-changed-files: true
+          hide-summary: true
+          remove-links-to-files: true
+          remove-links-to-lines: true
+
+      # Check types
+      - id: CheckTypes
+        name: CheckTypes
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        run: |
+          yarn types
+
+      - id: Success
+        name: Success ✅
+        if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && success() }}
+        run: |
+          curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+            "context": "tests",
+            "state": "success",
+            "description": "Checks passed",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }'
+      - id: Failure
+        name: Failure 🚨
+        if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && failure() }}
+        run: |
+          curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+            "context": "tests",
+            "state": "failure",
+            "description": "Checks failed",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }'
