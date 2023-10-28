@@ -6,9 +6,13 @@ on:
       - main
 
 jobs:
-  LintAndUnitTests:
-    name: LintAndUnitTests
+  setup:
+    name: setup
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        commands: [lint, test]
+      steps:
     steps:
       # Informational
       - id: GithubContext
@@ -53,61 +57,71 @@ jobs:
           yarn install --immutable
 
       # Lint source files with differences
-      - id: LintChangedFiles
-        name: LintChangedFiles
-        if: env.GIT_DIFF && !env.MATCHED_FILES
-        run: |
-          npx eslint ${{ env.GIT_DIFF_FILTERED }} --max-warnings 0 # e.g. yarn eslint 'src/App.js'
+      # - id: LintChangedFiles
+      #   name: LintChangedFiles
+      #   if: env.GIT_DIFF && !env.MATCHED_FILES
+      #   run: |
+      #     npx eslint ${{ env.GIT_DIFF_FILTERED }} --max-warnings 0 # e.g. yarn eslint 'src/App.js'
 
-      # Run a lint on all files if there are changes to yarn.lock or .eslintrc
-      - id: LintAllFiles
-        name: LintAllFiles
-        if: env.GIT_DIFF && env.MATCHED_FILES
-        run: |
-          yarn lint --max-warnings 0
+      # # Run a lint on all files if there are changes to yarn.lock or .eslintrc
+      # - id: LintAllFiles
+      #   name: LintAllFiles
+      #   if: env.GIT_DIFF && env.MATCHED_FILES
+      #   run: |
+      #     yarn lint --max-warnings 0
 
-      # Run ALL tests
-      - id: RunAllTests
-        name: RunAllTests
-        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
-        run: |
-          yarn test --ci --silent --coverage --maxWorkers=50% | tee ./coverage.txt && exit ${PIPESTATUS[0]}
+      # # Run ALL tests
+      # - id: RunAllTests
+      #   name: RunAllTests
+      #   if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+      #   run: |
+      #     yarn test --ci --silent --coverage --maxWorkers=50% | tee ./coverage.txt && exit ${PIPESTATUS[0]}
 
-      - id: CommentCoverage
-        name: CommentCoverage
-        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
-        uses: MishaKav/jest-coverage-comment@main
-        with:
-          coverage-path: ./coverage.txt
-          report-only-changed-files: true
-          hide-summary: true
-          remove-links-to-files: true
-          remove-links-to-lines: true
+      # - id: CommentCoverage
+      #   name: CommentCoverage
+      #   if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+      #   uses: MishaKav/jest-coverage-comment@main
+      #   with:
+      #     coverage-path: ./coverage.txt
+      #     report-only-changed-files: true
+      #     hide-summary: true
+      #     remove-links-to-files: true
+      #     remove-links-to-lines: true
 
-      # Check types
-      - id: CheckTypes
-        name: CheckTypes
-        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
-        run: |
-          yarn types
+      # # Check types
+      # - id: CheckTypes
+      #   name: CheckTypes
+      #   if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+      #   run: |
+      #     yarn types
 
-      - id: Success
-        name: Success ✅
-        if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && success() }}
-        run: |
-          curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
-            "context": "tests",
-            "state": "success",
-            "description": "Checks passed",
-            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }'
-      - id: Failure
-        name: Failure 🚨
-        if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && failure() }}
-        run: |
-          curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
-            "context": "tests",
-            "state": "failure",
-            "description": "Checks failed",
-            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          }'
+      # - id: Success
+      #   name: Success ✅
+      #   if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && success() }}
+      #   run: |
+      #     curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+      #       "context": "tests",
+      #       "state": "success",
+      #       "description": "Checks passed",
+      #       "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      #     }'
+      # - id: Failure
+      #   name: Failure 🚨
+      #   if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && failure() }}
+      #   run: |
+      #     curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+      #       "context": "tests",
+      #       "state": "failure",
+      #       "description": "Checks failed",
+      #       "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      #     }'
+
+  cicd:
+    name: cicd
+    needs: setup
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        commands: [lint, test]
+      steps:
+        run: npm ${{ matrix.command }}
