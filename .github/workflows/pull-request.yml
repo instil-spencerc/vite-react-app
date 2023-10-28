@@ -9,10 +9,6 @@ jobs:
   setup:
     name: setup
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        commands: [lint, test]
-      steps:
     steps:
       # Informational
       - id: GithubContext
