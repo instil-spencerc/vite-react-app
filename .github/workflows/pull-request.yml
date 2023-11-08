@@ -6,31 +6,19 @@ on:
       - main
 
 jobs:
+  setup:
+    uses: ./.github/workflows/setup.yml
+
   cicd:
     name: cicd
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        command: [lint, test-all, test-changed]
+        command: [tests-changed]
     steps:
-      - name: check out repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      # Install node in the runner
-      - name: install node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "16"
-          cache: "yarn"
-
-      # Install and cache node modules
-      - name: run yarn
-        run: yarn
-
       - name: Run matrix command
-        run: npm run ${{ matrix.command }}
+        needs: setup
+        uses: ./.github/workflows/${{matrix.command}}-workflow.yml
 
       - name: Success ✅
         if: ${{success()}}
