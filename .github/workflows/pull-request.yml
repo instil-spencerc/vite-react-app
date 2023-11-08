@@ -62,16 +62,16 @@ jobs:
         run: |
           yarn install --immutable
       - name: Run matrix test command
-        if: matrix.command == 'tests-changed' || matrix.command == 'test-all'
+        if: matrix.command == 'tests-changed' || matrix.command == 'tests-all'
         run: yarn ${{matrix.command}} | tee ./coverage.txt && exit ${PIPESTATUS[0]}
 
       - name: Run matrix command
-        if: matrix.command != 'tests-changed' && matrix.command != 'test-all'
+        if: matrix.command != 'tests-changed' && matrix.command != 'tests-all'
         run: yarn ${{matrix.command}}
 
       - id: CommentCoverage
         name: CommentCoverage
-        if: matrix.command == 'tests-changed' || matrix.command == 'test-all'
+        if: matrix.command == 'tests-changed' || matrix.command == 'tests-all'
         uses: MishaKav/jest-coverage-comment@main
         with:
           coverage-path: ./coverage.txt
