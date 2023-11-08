@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        command: [lint, test]
+        command: [lint, test-all, test-changed]
     steps:
       - name: check out repo
         uses: actions/checkout@v3
