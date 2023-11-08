@@ -42,17 +42,14 @@ jobs:
       # Dump the diffed files for debugging purposes
       - id: DumpDiffedFiles
         name: DumpDiffedFiles
-        if: env.GIT_DIFF_FILTERED
         run: echo ${{ env.GIT_DIFF_FILTERED }}
 
       - id: DumpMatchedFiles
         name: DumpMatchedFiles
-        if: env.MATCHED_FILES
         run: echo ${{ env.MATCHED_FILES }}
 
       # Install node in the runner
       - id: InstallNode
-        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
         name: InstallNode
         uses: actions/setup-node@v3
         with:
@@ -62,7 +59,6 @@ jobs:
       # Install and cache node modules
       - id: InstallNodeModules
         name: InstallNodeModules
-        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
         run: |
           yarn install --immutable
       - name: Run matrix command
@@ -70,7 +66,7 @@ jobs:
 
       - id: CommentCoverage
         name: CommentCoverage
-        if: matrix.command == 'tests-changed'
+        if: matrix.command == 'tests-changed' || matrix.command == 'test-all'
         uses: MishaKav/jest-coverage-comment@main
         with:
           coverage-path: ./coverage.txt
