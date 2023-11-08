@@ -74,6 +74,7 @@ jobs:
         if: matrix.command == 'tests-all'
         uses: MishaKav/jest-coverage-comment@main
         with:
+          label: Changed Files Test Coverage
           coverage-path: ./coverage-${{matrix.command}}.txt
           hide-summary: true
           remove-links-to-files: true
@@ -84,6 +85,7 @@ jobs:
         if: matrix.command == 'tests-changed'
         uses: MishaKav/jest-coverage-comment@main
         with:
+          label: All Test Coverage
           coverage-path: ./coverage-${{matrix.command}}.txt
           report-only-changed-files: true
 
