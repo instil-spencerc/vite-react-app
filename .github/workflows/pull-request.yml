@@ -6,16 +6,12 @@ on:
       - main
 
 jobs:
-  setup:
-    uses: ./.github/workflows/setup-workflow.yml
-
   cicd:
     name: cicd
     runs-on: ubuntu-latest
-    needs: setup
     strategy:
       matrix:
-        command: [lint, tests-changed, tests-all]
+        command: [lint, tests-changed, tests-all, types]
     steps:
       # Informational
       - id: GithubContext
