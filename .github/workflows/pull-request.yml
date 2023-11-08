@@ -30,8 +30,6 @@ jobs:
         with:
           PATTERNS: |
             src/**/*.+(js|jsx|ts|tsx)
-            !src/styles/**/*.js
-            .storybook/**/*.+(js|jsx)
           FILES: |
             yarn.lock
             .eslintrc.json
@@ -91,27 +89,6 @@ jobs:
       #   run: |
       #     yarn types
 
-      # - id: Success
-      #   name: Success ✅
-      #   if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && success() }}
-      #   run: |
-      #     curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
-      #       "context": "tests",
-      #       "state": "success",
-      #       "description": "Checks passed",
-      #       "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      #     }'
-      # - id: Failure
-      #   name: Failure 🚨
-      #   if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && failure() }}
-      #   run: |
-      #     curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
-      #       "context": "tests",
-      #       "state": "failure",
-      #       "description": "Checks failed",
-      #       "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-      #     }'
-
   cicd:
     name: cicd
     needs: setup
@@ -120,4 +97,26 @@ jobs:
       matrix:
         commands: [lint, test]
       steps:
-        run: npm ${{ matrix.command }}
+        - id: ${matrix.command}
+          run: npm ${{ matrix.command }}
+
+        - id: Success
+          name: Success ✅
+          if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && success() }}
+          run: |
+            curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+              "context": "tests",
+              "state": "success",
+              "description": "Checks passed",
+              "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
+        - id: Failure
+          name: Failure 🚨
+          if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && failure() }}
+          run: |
+            curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+              "context": "tests",
+              "state": "failure",
+              "description": "Checks failed",
+              "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
