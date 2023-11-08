@@ -63,7 +63,7 @@ jobs:
           yarn install --immutable
       - name: Run matrix test command
         if: matrix.command == 'tests-changed' || matrix.command == 'tests-all'
-        run: yarn ${{matrix.command}} | tee ./coverage.txt && exit ${PIPESTATUS[0]}
+        run: yarn ${{matrix.command}} | tee ./coverage-${{matrix.command}}.txt && exit ${PIPESTATUS[0]}
 
       - name: Run matrix command
         if: matrix.command != 'tests-changed' && matrix.command != 'tests-all'
@@ -71,14 +71,21 @@ jobs:
 
       - id: CommentCoverage
         name: CommentCoverage
-        if: matrix.command == 'tests-changed' || matrix.command == 'tests-all'
+        if: matrix.command == 'tests-all'
         uses: MishaKav/jest-coverage-comment@main
         with:
-          coverage-path: ./coverage.txt
-          report-only-changed-files: true
+          coverage-path: ./coverage-${{matrix.command}}.txt
           hide-summary: true
           remove-links-to-files: true
           remove-links-to-lines: true
+
+      - id: CommentCoverageChanged
+        name: CommentCoverageChanged
+        if: matrix.command == 'tests-changed'
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          coverage-path: ./coverage-${{matrix.command}}.txt
+          report-only-changed-files: true
 
       - name: Success ✅
         if: ${{success()}}
