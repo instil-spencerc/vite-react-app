@@ -7,7 +7,6 @@ on:
 
 jobs:
   cicd:
-    needs: setup
     runs-on: ubuntu-latest
     strategy:
       matrix:
