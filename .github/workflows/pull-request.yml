@@ -18,7 +18,18 @@ jobs:
         command: [tests-changed]
     steps:
       - name: Run matrix command
-        uses: ./.github/workflows/${{matrix.command}}-workflow.yml
+        run: npm run ${{matrix.command}}
+
+      - id: CommentCoverage
+        name: CommentCoverage
+        if: matrix.command == 'tests-changed'
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          coverage-path: ./coverage.txt
+          report-only-changed-files: true
+          hide-summary: true
+          remove-links-to-files: true
+          remove-links-to-lines: true
 
       - name: Success ✅
         if: ${{success()}}
