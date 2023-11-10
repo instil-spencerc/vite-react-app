@@ -1,4 +1,4 @@
-name: PullRequest
+name: PullRequestLint
 
 on:
   pull_request:
@@ -6,12 +6,9 @@ on:
       - main
 
 jobs:
-  cicd:
-    name: cicd
+  Lint:
+    name: Lint
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        command: [lint, tests-changed, tests-all, types]
     steps:
       # Informational
       - id: GithubContext
@@ -42,14 +39,17 @@ jobs:
       # Dump the diffed files for debugging purposes
       - id: DumpDiffedFiles
         name: DumpDiffedFiles
+        if: env.GIT_DIFF_FILTERED
         run: echo ${{ env.GIT_DIFF_FILTERED }}
 
       - id: DumpMatchedFiles
         name: DumpMatchedFiles
+        if: env.MATCHED_FILES
         run: echo ${{ env.MATCHED_FILES }}
 
       # Install node in the runner
       - id: InstallNode
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
         name: InstallNode
         uses: actions/setup-node@v3
         with:
@@ -59,38 +59,27 @@ jobs:
       # Install and cache node modules
       - id: InstallNodeModules
         name: InstallNodeModules
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
         run: |
           yarn install --immutable
-      - name: Run matrix test command
-        if: matrix.command == 'tests-changed' || matrix.command == 'tests-all'
-        run: yarn ${{matrix.command}} | tee ./coverage-${{matrix.command}}.txt && exit ${PIPESTATUS[0]}
 
-      - name: Run matrix command
-        if: matrix.command != 'tests-changed' && matrix.command != 'tests-all'
-        run: yarn ${{matrix.command}}
+      # Lint source files with differences
+      - id: LintChangedFiles
+        name: LintChangedFiles
+        if: env.GIT_DIFF && !env.MATCHED_FILES
+        run: |
+          npx eslint ${{ env.GIT_DIFF_FILTERED }} --max-warnings 0 # e.g. yarn eslint 'src/App.js'
 
-      - id: CommentCoverage
-        name: CommentCoverage
-        if: matrix.command == 'tests-all'
-        uses: MishaKav/jest-coverage-comment@main
-        with:
-          label: Changed Files Test Coverage
-          coverage-path: ./coverage-${{matrix.command}}.txt
-          hide-summary: true
-          remove-links-to-files: true
-          remove-links-to-lines: true
+      # Run a lint on all files if there are changes to yarn.lock or .eslintrc
+      - id: LintAllFiles
+        name: LintAllFiles
+        if: env.GIT_DIFF && env.MATCHED_FILES
+        run: |
+          yarn lint --max-warnings 0
 
-      - id: CommentCoverageChanged
-        name: CommentCoverageChanged
-        if: matrix.command == 'tests-changed'
-        uses: MishaKav/jest-coverage-comment@main
-        with:
-          label: All Test Coverage
-          coverage-path: ./coverage-${{matrix.command}}.txt
-          report-only-changed-files: true
-
-      - name: Success ✅
-        if: ${{success()}}
+      - id: Success
+        name: Success ✅
+        if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && success() }}
         run: |
           curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
             "context": "tests",
@@ -100,7 +89,7 @@ jobs:
           }'
       - id: Failure
         name: Failure 🚨
-        if: ${{failure()}}
+        if: ${{ (env.GIT_DIFF_FILTERED || env.MATCHED_FILES) && failure() }}
         run: |
           curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
             "context": "tests",
