@@ -1,0 +1,98 @@
+name: PullRequestTestAll
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  TestAll:
+    name: TestAll
+    runs-on: ubuntu-latest
+    steps:
+      # Informational
+      - id: GithubContext
+        name: DumpGitHubcontext
+        env:
+          GITHUB_CONTEXT: ${{ toJSON(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      # checkout repo for the particular commit SHA
+      - id: CheckoutRepo
+        name: CheckoutRepo
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - id: GetDiffFiles
+        name: GetDiffFiles
+        uses: technote-space/get-diff-action@v6
+        with:
+          PATTERNS: |
+            src/**/*.+(js|jsx|ts|tsx)
+            !src/styles/**/*.js
+            .storybook/**/*.+(js|jsx)
+          FILES: |
+            yarn.lock
+            .eslintrc.json
+
+      # Dump the diffed files for debugging purposes
+      - id: DumpDiffedFiles
+        name: DumpDiffedFiles
+        run: echo ${{ env.GIT_DIFF_FILTERED }}
+
+      - id: DumpMatchedFiles
+        name: DumpMatchedFiles
+        run: echo ${{ env.MATCHED_FILES }}
+
+      # Install node in the runner
+      - id: InstallNode
+        name: InstallNode
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "yarn"
+
+      # Install and cache node modules
+      - id: InstallNodeModules
+        name: InstallNodeModules
+        run: |
+          yarn install --immutable
+
+      # Run ALL tests
+      - id: RunAllTests
+        name: RunAllTests
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        run: |
+          yarn test --ci --silent --coverage --maxWorkers=50% | tee ./coverage.txt && exit ${PIPESTATUS[0]}
+
+      - id: CommentCoverage
+        name: CommentCoverage
+        if: env.GIT_DIFF_FILTERED || env.MATCHED_FILES
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          coverage-path: ./coverage.txt
+          report-only-changed-files: true
+          hide-summary: true
+          remove-links-to-files: true
+          remove-links-to-lines: true
+
+      - name: Success ✅
+        if: ${{success()}}
+        run: |
+          curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+            "context": "tests",
+            "state": "success",
+            "description": "Checks passed",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }'
+      - id: Failure
+        name: Failure 🚨
+        if: ${{failure()}}
+        run: |
+          curl --request POST --url https://api.github.com/repos/${{ github.repository }}/statuses/${{ github.sha }} --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' --header 'content-type: application/json' --data '{
+            "context": "tests",
+            "state": "failure",
+            "description": "Checks failed",
+            "target_url": "https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          }'
