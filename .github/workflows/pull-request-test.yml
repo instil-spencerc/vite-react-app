@@ -72,6 +72,7 @@ jobs:
         uses: MishaKav/jest-coverage-comment@main
         with:
           coverage-path: ./coverage.txt
+          summary-title: Files from PR
 
       - name: Success ✅
         if: ${{success()}}

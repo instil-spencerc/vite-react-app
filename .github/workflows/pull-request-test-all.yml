@@ -73,6 +73,7 @@ jobs:
         with:
           coverage-path: ./coverage.txt
           hide-summary: true
+          summary-title: All Tests
 
       - name: Success ✅
         if: ${{success()}}
