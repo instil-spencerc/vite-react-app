@@ -4,6 +4,6 @@ describe("test", () => {
   });
 
   it("does another thing", () => {
-    expect("thing").toBe("thing");
+    expect("thing").toBe("a thing");
   });
 });
