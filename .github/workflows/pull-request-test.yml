@@ -72,10 +72,7 @@ jobs:
         uses: MishaKav/jest-coverage-comment@main
         with:
           coverage-path: ./coverage.txt
-          report-only-changed-files: true
-          hide-summary: true
-          remove-links-to-files: true
-          remove-links-to-lines: true
+          title: Coverage only for files from PR
 
       - name: Success ✅
         if: ${{success()}}
